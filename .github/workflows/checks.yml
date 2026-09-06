@@ -1,0 +1,31 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+      - name: every fixture verifies
+        run: |
+          set -e
+          for file in fixtures/*.json; do
+            node verify-trail.mjs "$file"
+          done
+      - name: an altered fixture is reported broken
+        run: |
+          set -e
+          for file in fixtures/*.json; do
+            sed 's/"spaceKey": "QMS"/"spaceKey": "OPS"/' "$file" > altered.json
+            if node verify-trail.mjs altered.json; then
+              echo "an altered export was not reported broken" "$file"
+              exit 1
+            fi
+          done

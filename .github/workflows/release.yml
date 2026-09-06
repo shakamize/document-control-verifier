@@ -1,0 +1,54 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: the tag names the version the file carries
+        run: |
+          set -e
+          declared=$(node -e "process.stdout.write(/const VERSION = '([^']+)'/.exec(require('node:fs').readFileSync('verify-trail.mjs','utf8'))[1])")
+          tagged="${GITHUB_REF_NAME#v}"
+          if [ "$declared" != "$tagged" ]; then
+            echo "tag $GITHUB_REF_NAME does not name the version in verify-trail.mjs, which is $declared"
+            exit 1
+          fi
+
+      - name: every fixture verifies
+        run: |
+          set -e
+          for file in fixtures/*.json; do
+            node verify-trail.mjs "$file"
+          done
+
+      - name: publish the release, with the digest of the bytes it attaches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          digest=$(shasum -a 256 verify-trail.mjs | cut -d' ' -f1)
+          {
+            echo "\`verify-trail.mjs\` for this release, and the SHA-256 of the exact file attached below."
+            echo
+            echo '```'
+            echo "$digest  verify-trail.mjs"
+            echo '```'
+            echo
+            echo "Check your copy with \`shasum -a 256 verify-trail.mjs\`, or on Windows"
+            echo "\`certutil -hashfile verify-trail.mjs SHA256\`. This digest is computed by the"
+            echo "release job from the bytes it attaches, so it is not a value anybody typed."
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" verify-trail.mjs LICENSE NOTICE \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md

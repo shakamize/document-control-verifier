@@ -1,0 +1,8 @@
+Document control trail verifier
+Copyright 2026 Shakamize
+
+This product includes software developed at Shakamize (https://shakamize.com).
+
+It checks exports taken from the Confluence document control app published on
+the Atlassian Marketplace by Shakamize. It has no dependencies and it reads
+nothing but the files it is given.

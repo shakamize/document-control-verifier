@@ -1,0 +1,95 @@
+{
+  "format": "dc-audit-export-v1",
+  "algorithm": "dc-audit-sha256-v1",
+  "exportedAt": "2026-07-01T11:30:00.000Z",
+  "documentCount": 1,
+  "rowCount": 3,
+  "limits": {
+    "detectsAlteredRow": true,
+    "detectsRemovedRow": true,
+    "detectsRemovedTail": false
+  },
+  "documents": [
+    {
+      "documentId": "1000101",
+      "spaceKey": "QMS",
+      "verification": {
+        "status": "verified",
+        "rows": 3,
+        "headHash": "177ae61e1440e193a20f07646eb23f47dceb497641234812123487d84b8ece6f"
+      },
+      "rows": [
+        {
+          "chained": {
+            "documentId": "1000101",
+            "sequenceNumber": 1,
+            "spaceKey": "QMS",
+            "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "eventType": "document-submitted",
+            "actorKey": "approver-7",
+            "outcome": "recorded",
+            "detailCanonical": "{\"version\":3}",
+            "recordedAt": "2026-07-01T09:14:22.117Z",
+            "hash": "f3c432e21624f567cec6a8ae9c91221627db9fc7c555f7397b5165f9d9740bc9"
+          },
+          "rendered": {
+            "event": "document-submitted",
+            "outcome": "recorded",
+            "recordedAt": "2026-07-01T09:14:22.117Z",
+            "actorKey": "approver-7",
+            "detail": {
+              "version": 3
+            }
+          }
+        },
+        {
+          "chained": {
+            "documentId": "1000101",
+            "sequenceNumber": 2,
+            "spaceKey": "QMS",
+            "previousHash": "f3c432e21624f567cec6a8ae9c91221627db9fc7c555f7397b5165f9d9740bc9",
+            "eventType": "approval-granted",
+            "actorKey": "approver-9",
+            "outcome": "approved",
+            "detailCanonical": "{\"reason\":\"meets-specification\",\"version\":3}",
+            "recordedAt": "2026-07-01T11:02:41.008Z",
+            "hash": "cba00ca44cb580ff3d99fc2a3b6216b90c0326a73f37975c70765f946c0e61bd"
+          },
+          "rendered": {
+            "event": "approval-granted",
+            "outcome": "approved",
+            "recordedAt": "2026-07-01T11:02:41.008Z",
+            "actorKey": "approver-9",
+            "detail": {
+              "reason": "meets-specification",
+              "version": 3
+            }
+          }
+        },
+        {
+          "chained": {
+            "documentId": "1000101",
+            "sequenceNumber": 3,
+            "spaceKey": "QMS",
+            "previousHash": "cba00ca44cb580ff3d99fc2a3b6216b90c0326a73f37975c70765f946c0e61bd",
+            "eventType": "page-locked",
+            "actorKey": "system",
+            "outcome": "recorded",
+            "detailCanonical": "{\"restrictions\":\"applied\"}",
+            "recordedAt": "2026-07-01T11:02:43.552Z",
+            "hash": "177ae61e1440e193a20f07646eb23f47dceb497641234812123487d84b8ece6f"
+          },
+          "rendered": {
+            "event": "page-locked",
+            "outcome": "recorded",
+            "recordedAt": "2026-07-01T11:02:43.552Z",
+            "actorKey": "system",
+            "detail": {
+              "restrictions": "applied"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

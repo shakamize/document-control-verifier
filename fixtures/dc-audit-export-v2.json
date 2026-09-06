@@ -1,0 +1,162 @@
+{
+  "format": "dc-audit-export-v2",
+  "algorithm": "dc-audit-sha256-v1",
+  "construction": {
+    "algorithm": "dc-audit-sha256-v1",
+    "digest": "sha256",
+    "encoding": "hex",
+    "genesisHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "separator": "|",
+    "framing": "each part is prefixed with its length in UTF-8 bytes and a colon",
+    "fields": [
+      "algorithm",
+      "previousHash",
+      "documentId",
+      "sequenceNumber",
+      "spaceKey",
+      "recordedAt",
+      "eventType",
+      "actorKey",
+      "outcome",
+      "detailCanonical"
+    ]
+  },
+  "exportedAt": "2026-08-05T07:00:00.000Z",
+  "documentCount": 1,
+  "rowCount": 4,
+  "limits": {
+    "detectsAlteredRow": true,
+    "detectsRemovedRow": true,
+    "detectsRemovedTail": false
+  },
+  "attribution": {
+    "status": "carried",
+    "approvers": [
+      {
+        "approverKey": "approver-4",
+        "identity": "erased",
+        "erasedAt": "2026-08-04T18:11:00.000Z",
+        "error": null
+      },
+      {
+        "approverKey": "approver-7",
+        "identity": "known",
+        "erasedAt": null,
+        "error": null
+      },
+      {
+        "approverKey": "system",
+        "identity": "system",
+        "erasedAt": null,
+        "error": null
+      }
+    ]
+  },
+  "documents": [
+    {
+      "documentId": "1000202",
+      "spaceKey": "QMS",
+      "verification": {
+        "status": "verified",
+        "rows": 4,
+        "headHash": "ffe044103bf85759b9bbf0feb4a3bafd9e9bf83bb6a605db97e4d35bd890cd19"
+      },
+      "rows": [
+        {
+          "chained": {
+            "documentId": "1000202",
+            "sequenceNumber": 1,
+            "spaceKey": "QMS",
+            "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "eventType": "document-submitted",
+            "actorKey": "approver-7",
+            "outcome": "recorded",
+            "detailCanonical": "{\"version\":5}",
+            "recordedAt": "2026-08-03T08:41:02.410Z",
+            "hash": "ea4e66ace7f69de896380b0cfc14fa3d136606858b34a96314b2a73a4f9fa704"
+          },
+          "rendered": {
+            "event": "document-submitted",
+            "outcome": "recorded",
+            "recordedAt": "2026-08-03T08:41:02.410Z",
+            "actorKey": "approver-7",
+            "detail": {
+              "version": 5
+            }
+          }
+        },
+        {
+          "chained": {
+            "documentId": "1000202",
+            "sequenceNumber": 2,
+            "spaceKey": "QMS",
+            "previousHash": "ea4e66ace7f69de896380b0cfc14fa3d136606858b34a96314b2a73a4f9fa704",
+            "eventType": "approval-granted",
+            "actorKey": "approver-7",
+            "outcome": "approved",
+            "detailCanonical": "{\"reason\":\"meets-specification\",\"version\":5}",
+            "recordedAt": "2026-08-03T09:57:19.883Z",
+            "hash": "be4168fae18f9a844db9447bdd12fcaf9582feddb1b069b5f9ac5c456359dc8d"
+          },
+          "rendered": {
+            "event": "approval-granted",
+            "outcome": "approved",
+            "recordedAt": "2026-08-03T09:57:19.883Z",
+            "actorKey": "approver-7",
+            "detail": {
+              "reason": "meets-specification",
+              "version": 5
+            }
+          }
+        },
+        {
+          "chained": {
+            "documentId": "1000202",
+            "sequenceNumber": 3,
+            "spaceKey": "QMS",
+            "previousHash": "be4168fae18f9a844db9447bdd12fcaf9582feddb1b069b5f9ac5c456359dc8d",
+            "eventType": "approval-granted",
+            "actorKey": "approver-4",
+            "outcome": "approved",
+            "detailCanonical": "{\"reason\":\"meets-specification\",\"version\":5}",
+            "recordedAt": "2026-08-04T13:20:55.006Z",
+            "hash": "10ab40af3bc1f523dad79745202f0b3c3eb5c3e8335c6191480ccb37396fe35e"
+          },
+          "rendered": {
+            "event": "approval-granted",
+            "outcome": "approved",
+            "recordedAt": "2026-08-04T13:20:55.006Z",
+            "actorKey": "approver-4",
+            "detail": {
+              "reason": "meets-specification",
+              "version": 5
+            }
+          }
+        },
+        {
+          "chained": {
+            "documentId": "1000202",
+            "sequenceNumber": 4,
+            "spaceKey": "QMS",
+            "previousHash": "10ab40af3bc1f523dad79745202f0b3c3eb5c3e8335c6191480ccb37396fe35e",
+            "eventType": "page-locked",
+            "actorKey": "system",
+            "outcome": "recorded",
+            "detailCanonical": "{\"restrictions\":\"applied\"}",
+            "recordedAt": "2026-08-04T13:20:57.219Z",
+            "hash": "ffe044103bf85759b9bbf0feb4a3bafd9e9bf83bb6a605db97e4d35bd890cd19"
+          },
+          "rendered": {
+            "event": "page-locked",
+            "outcome": "recorded",
+            "recordedAt": "2026-08-04T13:20:57.219Z",
+            "actorKey": "system",
+            "detail": {
+              "restrictions": "applied"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
