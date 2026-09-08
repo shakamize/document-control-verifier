@@ -39,6 +39,23 @@ jobs:
         run: |
           set -e
           digest=$(shasum -a 256 verify-trail.mjs | cut -d' ' -f1)
+
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            mkdir -p published
+            gh release download "$GITHUB_REF_NAME" -p verify-trail.mjs -D published
+            already=$(shasum -a 256 published/verify-trail.mjs | cut -d' ' -f1)
+            if [ "$already" = "$digest" ]; then
+              echo "$GITHUB_REF_NAME is already released and its attached file is the file at this tag. Nothing to do."
+              exit 0
+            fi
+            echo "$GITHUB_REF_NAME is already released, and the file attached to it is NOT the file at this tag."
+            echo "  attached to the release: $already"
+            echo "  at this tag:             $digest"
+            echo "Refusing to republish. A released digest describes a file somebody may already hold,"
+            echo "so it is never overwritten. Release the new file under a new version instead."
+            exit 1
+          fi
+
           {
             echo "\`verify-trail.mjs\` for this release, and the SHA-256 of the exact file attached below."
             echo
