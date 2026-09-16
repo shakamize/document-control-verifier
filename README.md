@@ -61,6 +61,26 @@ Pass the fixtures one at a time rather than all together. Several files given at
 once are read as successive takes of the same trail, oldest first, and these are
 not that.
 
+## How a document is named
+
+Every document in an export is identified by its **page id**, which never
+changes, and from `dc-audit-export-v3` onward it is also **named by the title
+this app last saw the page carrying**, under `titles`, with the moment it saw
+that stamped against each one.
+
+A page title is not part of the hash chain and it never will be. Anybody who can
+edit a page can rename it, so a title is prose rather than a fact about the
+approval, and putting it into a chained row would make an ordinary rename look
+like a tampered record. The title sits outside the chain, and altering it changes
+no hash and is not detected.
+
+**So a title in an export is a stamped observation, not a lookup.** It records
+what the app saw the page called, and when. Two exports taken a year apart may
+name the same page differently, and each is true of its own stamp. The page id is
+the thing to match a document by. A document released from control, and a page
+this app has never managed to read, are named by id alone and counted as ones the
+file cannot tell you about. That is not a report that they have no titles.
+
 ## What the answers mean
 
 - **verified**, with a row count and a head hash per document. Every row hashes

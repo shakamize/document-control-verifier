@@ -4,11 +4,11 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { argv, exit, stdout } from 'node:process';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 
 const ALGORITHM = 'dc-audit-sha256-v1';
 
-const KNOWN_FORMATS = ['dc-audit-export-v1', 'dc-audit-export-v2'];
+const KNOWN_FORMATS = ['dc-audit-export-v1', 'dc-audit-export-v2', 'dc-audit-export-v3'];
 
 const GENESIS_HASH = '0'.repeat(64);
 
@@ -137,6 +137,53 @@ const constructionMatches = (construction) => {
     construction.fields.length === CHAINED_FIELDS.length &&
     construction.fields.every((field, index) => field === CHAINED_FIELDS[index])
   );
+};
+
+const TITLE_KEPT = 120;
+
+const printable = (title) => title.replace(/\p{C}/gu, ' ').slice(0, TITLE_KEPT);
+
+const titlesOf = (envelope) => {
+  const carried = envelope.titles;
+  if (carried === undefined || carried === null || carried.status !== 'carried') {
+    return null;
+  }
+  const byDocument = new Map();
+  for (const title of Array.isArray(carried.titles) ? carried.titles : []) {
+    if (title !== null && typeof title === 'object' && isText(title.documentId)) {
+      byDocument.set(title.documentId, title);
+    }
+  }
+  return { byDocument };
+};
+
+const asDay = (moment) => (isText(moment) ? moment.slice(0, 10) : null);
+
+const namedBy = (titles, documentId) => {
+  const title = titles?.byDocument.get(documentId);
+  if (title === undefined || title.status !== 'read' || !isText(title.title)) {
+    return documentId;
+  }
+  const day = asDay(title.observedAt);
+  const named = `${documentId} "${printable(title.title)}"`;
+  return day === null ? named : `${named} as at ${day}`;
+};
+
+const reportTitles = (envelope, titles) => {
+  if (titles === null) {
+    say('  Titles: this export carries none, so its documents are named by page id alone.');
+    say('  That is not a report that the pages have no titles.');
+    return;
+  }
+  const untold = envelope.documents.filter(
+    (document) => titles.byDocument.get(document.documentId)?.status !== 'read',
+  ).length;
+  say(
+    `  Titles: ${String(untold)} of ${String(envelope.documents.length)} could not be told, and each of the others is stamped above.`,
+  );
+  say('  A page title can be changed by anybody who can edit the page, so each stamp is when');
+  say('  this app last saw the page carrying that name, and none of them says what the page is');
+  say('  called now. The page id is what identifies the document, and it does not change.');
 };
 
 const attributionOf = (envelope) => {
@@ -302,6 +349,7 @@ const verifyFile = (path) => {
   }
 
   const envelope = reading.envelope;
+  const titles = titlesOf(envelope);
   let verdict = VERIFIED;
   let unreadable = 0;
   let broken = 0;
@@ -312,17 +360,17 @@ const verifyFile = (path) => {
     if (result.status === 'broken') {
       broken += 1;
       say(
-        `  BROKEN ${document.documentId} at sequence ${String(result.sequenceNumber)}: ${result.reason}`,
+        `  BROKEN ${namedBy(titles, document.documentId)} at sequence ${String(result.sequenceNumber)}: ${result.reason}`,
       );
     } else if (result.status === 'unreadable') {
       unreadable += 1;
-      say(`  CANNOT TELL ${document.documentId}: ${result.reason}`);
+      say(`  CANNOT TELL ${namedBy(titles, document.documentId)}: ${result.reason}`);
     } else if (result.status === 'empty') {
-      say(`  ${document.documentId}: no rows in this export.`);
+      say(`  ${namedBy(titles, document.documentId)}: no rows in this export.`);
     } else {
       verified += 1;
       say(
-        `  verified ${document.documentId}: ${String(result.rows)} rows, head hash ${result.headHash}`,
+        `  verified ${namedBy(titles, document.documentId)}: ${String(result.rows)} rows, head hash ${result.headHash}`,
       );
     }
   }
@@ -336,6 +384,7 @@ const verifyFile = (path) => {
   say(
     `  Taken ${String(envelope.exportedAt)}: ${String(verified)} verified, ${String(broken)} broken, ${String(unreadable)} that cannot be told.`,
   );
+  reportTitles(envelope, titles);
   const erased = reportAttribution(envelope);
   if (erased > 0) {
     say(
@@ -346,7 +395,12 @@ const verifyFile = (path) => {
   return { path, verdict, reading };
 };
 
-const banner = () => `verify-trail ${VERSION}, which reads ${KNOWN_FORMATS.join(' and ')}.`;
+const listed = (items) =>
+  items.length < 2
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+
+const banner = () => `verify-trail ${VERSION}, which reads ${listed(KNOWN_FORMATS)}.`;
 
 const usage = () => {
   say(banner());
