@@ -3,8 +3,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { argv, exit, stdout } from 'node:process';
-
-const VERSION = '1.1.0';
+import { fileURLToPath } from 'node:url';
 
 const ALGORITHM = 'dc-audit-sha256-v1';
 
@@ -80,6 +79,13 @@ const verifyDocument = (document) => {
   }
   if (rows.length === 0) {
     return { status: 'empty' };
+  }
+  if (document.documentId !== rows[0].documentId) {
+    return {
+      status: 'broken',
+      sequenceNumber: rows[0].sequenceNumber,
+      reason: 'the document is labelled with a page id its rows do not carry',
+    };
   }
 
   let previousHash = GENESIS_HASH;
@@ -157,31 +163,43 @@ const titlesOf = (envelope) => {
   return { byDocument };
 };
 
-const asDay = (moment) => (isText(moment) ? moment.slice(0, 10) : null);
+const asDay = (moment) => (isText(moment) ? printable(moment).slice(0, 10) : null);
 
-const namedBy = (titles, documentId) => {
-  const title = titles?.byDocument.get(documentId);
-  if (title === undefined || title.status !== 'read' || !isText(title.title)) {
-    return documentId;
-  }
-  const day = asDay(title.observedAt);
-  const named = `${documentId} "${printable(title.title)}"`;
-  return day === null ? named : `${named} as at ${day}`;
+const pageIdOf = (document) => {
+  const first = Array.isArray(document.rows) ? (document.rows[0] ?? {}).chained : undefined;
+  const id = isText(first?.documentId) ? first.documentId : document.documentId;
+  return isText(id) ? id : null;
+};
+
+const shownId = (document) => {
+  const id = pageIdOf(document);
+  return id === null ? 'a document with no page id' : printable(id);
 };
 
 const reportTitles = (envelope, titles) => {
   if (titles === null) {
-    say('  Titles: this export carries none, so its documents are named by page id alone.');
+    say('  Names: this export carries none, so its documents are named by page id alone.');
     say('  That is not a report that the pages have no titles.');
     return;
   }
-  const untold = envelope.documents.filter(
-    (document) => titles.byDocument.get(document.documentId)?.status !== 'read',
-  ).length;
+  say('  Names, each as this app last saw the page carrying it:');
+  let untold = 0;
+  for (const document of envelope.documents) {
+    const id = pageIdOf(document);
+    const title = id === null ? undefined : titles.byDocument.get(id);
+    if (title === undefined || title.status !== 'read' || !isText(title.title)) {
+      untold += 1;
+      say(`    ${shownId(document)}: no name this file can tell.`);
+      continue;
+    }
+    const day = asDay(title.observedAt);
+    const named = `    ${shownId(document)} is named "${printable(title.title)}"`;
+    say(day === null ? `${named}.` : `${named}, seen ${day}.`);
+  }
   say(
-    `  Titles: ${String(untold)} of ${String(envelope.documents.length)} could not be told, and each of the others is stamped above.`,
+    `  ${String(untold)} of ${String(envelope.documents.length)} could not be told, which is not a report that those pages have no titles.`,
   );
-  say('  A page title can be changed by anybody who can edit the page, so each stamp is when');
+  say('  A page title can be changed by anybody who can edit the page, so each date is when');
   say('  this app last saw the page carrying that name, and none of them says what the page is');
   say('  called now. The page id is what identifies the document, and it does not change.');
 };
@@ -264,33 +282,38 @@ const reportAttribution = (envelope) => {
     return 0;
   }
 
-  const standingOf = new Map(approvers.map((approver) => [approver.approverKey, approver]));
+  say('  Approvers, by the key each row carries:');
+  const standingOf = new Map(
+    approvers
+      .filter((approver) => approver !== null && typeof approver === 'object')
+      .map((approver) => [approver.approverKey, approver]),
+  );
   const erased = [];
 
   for (const key of keys) {
     const approver = standingOf.get(key);
     if (approver === undefined) {
       say(
-        `  ${key}: no standing in this export, so its attribution cannot be told from this file.`,
+        `    ${printable(key)}: no standing in this export, so its attribution cannot be told from this file.`,
       );
     } else if (approver.identity === 'erased') {
       erased.push(key);
       say(
-        `  ${key}: identity erased at the person's request${approver.erasedAt ? ` on ${approver.erasedAt}` : ''}. The approval stands and the chain is unaffected.`,
+        `    ${printable(key)}: identity erased at the person's request${approver.erasedAt ? ` on ${printable(String(approver.erasedAt))}` : ''}. The approval stands and the chain is unaffected.`,
       );
     } else if (approver.identity === 'known') {
       say(
-        `  ${key}: the app holds the account behind this key. Account identifiers are never written into an export.`,
+        `    ${printable(key)}: the app holds the account behind this key. Account identifiers are never written into an export.`,
       );
     } else if (approver.identity === 'system') {
-      say(`  ${key}: the app itself, not a person.`);
+      say(`    ${printable(key)}: the app itself, not a person.`);
     } else if (approver.identity === 'unknown') {
       say(
-        `  ${key}: the app holds no account for this key. That is not a report that nobody signed.`,
+        `    ${printable(key)}: the app holds no account for this key. That is not a report that nobody signed.`,
       );
     } else {
       say(
-        `  ${key}: the app could not look this key up${approver.error ? `: ${approver.error}` : ''}. That is not a report that nobody signed.`,
+        `    ${printable(key)}: the app could not look this key up${approver.error ? `: ${printable(String(approver.error))}` : ''}. That is not a report that nobody signed.`,
       );
     }
   }
@@ -302,8 +325,8 @@ const rowsByDocument = (envelope) => {
   const byDocument = new Map();
   for (const document of envelope.documents) {
     byDocument.set(
-      document.documentId,
-      (document.rows ?? []).map((row) => (row ?? {}).chained ?? {}),
+      shownId(document),
+      (Array.isArray(document.rows) ? document.rows : []).map((row) => (row ?? {}).chained ?? {}),
     );
   }
   return byDocument;
@@ -343,13 +366,12 @@ const verifyFile = (path) => {
   say(`${path}`);
   const reading = readEnvelope(path);
   if (reading.status === 'unreadable') {
-    say(`  Cannot tell: ${reading.reason}`);
+    say(`  Cannot tell: ${printable(reading.reason)}`);
     say('  This is not a report that the record is intact.');
     return { path, verdict: CANNOT_TELL };
   }
 
   const envelope = reading.envelope;
-  const titles = titlesOf(envelope);
   let verdict = VERIFIED;
   let unreadable = 0;
   let broken = 0;
@@ -360,17 +382,17 @@ const verifyFile = (path) => {
     if (result.status === 'broken') {
       broken += 1;
       say(
-        `  BROKEN ${namedBy(titles, document.documentId)} at sequence ${String(result.sequenceNumber)}: ${result.reason}`,
+        `  BROKEN ${shownId(document)} at sequence ${String(result.sequenceNumber)}: ${result.reason}`,
       );
     } else if (result.status === 'unreadable') {
       unreadable += 1;
-      say(`  CANNOT TELL ${namedBy(titles, document.documentId)}: ${result.reason}`);
+      say(`  CANNOT TELL ${shownId(document)}: ${result.reason}`);
     } else if (result.status === 'empty') {
-      say(`  ${namedBy(titles, document.documentId)}: no rows in this export.`);
+      say(`  ${shownId(document)}: no rows in this export.`);
     } else {
       verified += 1;
       say(
-        `  verified ${namedBy(titles, document.documentId)}: ${String(result.rows)} rows, head hash ${result.headHash}`,
+        `  verified ${shownId(document)}: ${String(result.rows)} rows, head hash ${result.headHash}`,
       );
     }
   }
@@ -382,9 +404,15 @@ const verifyFile = (path) => {
   }
 
   say(
-    `  Taken ${String(envelope.exportedAt)}: ${String(verified)} verified, ${String(broken)} broken, ${String(unreadable)} that cannot be told.`,
+    `  ${String(verified)} verified, ${String(broken)} broken, ${String(unreadable)} that cannot be told.`,
   );
-  reportTitles(envelope, titles);
+  say('');
+  say('  No hash covers anything below this line, so a change to it is not detected. It is');
+  say('  what the file says about the chains above, printed so they can be read, not vouched for.');
+  say(
+    `  The file says it was taken ${isText(envelope.exportedAt) ? printable(envelope.exportedAt) : 'at no time it states'}.`,
+  );
+  reportTitles(envelope, titlesOf(envelope));
   const erased = reportAttribution(envelope);
   if (erased > 0) {
     say(
@@ -400,7 +428,17 @@ const listed = (items) =>
     ? items.join('')
     : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 
-const banner = () => `verify-trail ${VERSION}, which reads ${listed(KNOWN_FORMATS)}.`;
+const ownDigest = () => {
+  try {
+    return createHash('sha256')
+      .update(readFileSync(fileURLToPath(import.meta.url)))
+      .digest('hex');
+  } catch (error) {
+    return `whose own digest could not be read (${printable(error.message)})`;
+  }
+};
+
+const banner = () => `verify-trail ${ownDigest()}, which reads ${listed(KNOWN_FORMATS)}.`;
 
 const usage = () => {
   say(banner());

@@ -69,25 +69,45 @@ Pass the fixtures one at a time rather than all together. Several files given at
 once are read as successive takes of the same trail, oldest first, and these are
 not that.
 
-## How a document is named
+## What no hash covers
 
-Every document in an export is identified by its **page id**, which never
-changes, and from `dc-audit-export-v3` onward it is also **named by the title
-this app last saw the page carrying**, under `titles`, with the moment it saw
-that stamped against each one.
+The hashes cover the rows under each document's `rows`, field by field, as
+`construction.fields` lists them. **Nothing else in an export is covered by any
+hash**, and a change to it is not detected by this check. That includes:
 
-A page title is not part of the hash chain and it never will be. Anybody who can
-edit a page can rename it, so a title is prose rather than a fact about the
-approval, and putting it into a chained row would make an ordinary rename look
-like a tampered record. The title sits outside the chain, and altering it changes
-no hash and is not detected.
+- the title each document is named by, under `titles`
+- the moment the export says it was taken, `exportedAt`
+- the standing of each approver key, under `attribution`, including whether an
+  identity was erased
+- the readable copy of each row, under `rendered`, which this check never prints
 
-**So a title in an export is a stamped observation, not a lookup.** It records
-what the app saw the page called, and when. Two exports taken a year apart may
-name the same page differently, and each is true of its own stamp. The page id is
-the thing to match a document by. A document released from control, and a page
-this app has never managed to read, are named by id alone and counted as ones the
-file cannot tell you about. That is not a report that they have no titles.
+The verifier prints the first three because an export is unreadable without
+them, and it prints them **below a line that says no hash covers them**. Every
+verdict above that line, `verified`, `BROKEN` or `CANNOT TELL`, names a document
+by the page id its own hashed rows carry, and by nothing else. A document whose
+label in the file names a different page id from its rows is reported broken.
+
+**Why titles are not brought under a hash.** Anybody who can edit a page can
+rename it, so a title is prose rather than a fact about the approval, and putting
+it into a chained row would make an ordinary rename look like a tampered record.
+A digest over the titles written into the same file would not help either:
+whoever changed a name could compute the digest again. What makes a row's hash
+worth checking is an export you already hold that carries the same row, and no
+earlier export can vouch for a title that is allowed to change between the two.
+
+**So a title in an export is a stamped observation, not a lookup, and not a
+verified fact.** It records what the app saw the page called, and when. Two
+exports taken a year apart may name the same page differently, and each is true
+of its own stamp. The page id is the thing to match a document by. A document
+released from control, and a page this app has never managed to read, are named
+by id alone and counted as ones the file cannot tell you about. That is not a
+report that they have no titles.
+
+**Version `1.1.0` printed a document's title inside its verdict line**, as
+`verified 1000202 "Quality manual" as at 2026-08-04`, where a name altered in the
+file read as part of what was verified. Its verdicts about the chains are
+correct. The name beside them was never checked, and from the release after it
+it is not printed there.
 
 ## What the answers mean
 
@@ -145,9 +165,15 @@ than the one it implements, rather than checking it against the wrong rule.
 ## Versions and compatibility
 
 Each release is a version of the verifier, and a released version never stops
-reading an export format the app has already shipped. The line it prints when it
-runs names the version and the formats it reads, so an output you keep alongside
-an export records what produced it.
+reading an export format the app has already shipped. Releases are numbered
+automatically, one patch after the latest, whenever the verifier or its fixtures
+change.
+
+The first line it prints on every run is **the SHA-256 of the file itself**, the
+same value the release page carries, followed by the export formats it reads. An
+output you keep alongside an export therefore records exactly which file produced
+it, and comparing that line with a release page tells you which release it was.
+Releases up to `v1.1.0` print a version number there instead.
 
 ## Licence
 

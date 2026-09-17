@@ -2,7 +2,15 @@ name: release
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths:
+      - 'verify-trail.mjs'
+      - 'fixtures/**'
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -12,21 +20,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
 
-      - name: the tag names the version the file carries
-        run: |
-          set -e
-          declared=$(node -e "process.stdout.write(/const VERSION = '([^']+)'/.exec(require('node:fs').readFileSync('verify-trail.mjs','utf8'))[1])")
-          tagged="${GITHUB_REF_NAME#v}"
-          if [ "$declared" != "$tagged" ]; then
-            echo "tag $GITHUB_REF_NAME does not name the version in verify-trail.mjs, which is $declared"
-            exit 1
-          fi
-
-      - name: archive the fixtures directory as it stands at this tag
+      - name: archive the fixtures directory as it stands at this commit
         run: |
           set -e
           git archive --format=zip HEAD fixtures > fixtures.zip
@@ -49,19 +49,21 @@ jobs:
           digest=$(shasum -a 256 verify-trail.mjs | cut -d' ' -f1)
           fixtures_digest=$(shasum -a 256 fixtures.zip | cut -d' ' -f1)
 
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+          latest=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // ""')
+          if [ -n "$latest" ]; then
             mkdir -p published
-            gh release download "$GITHUB_REF_NAME" -p verify-trail.mjs -D published
+            gh release download "$latest" -p verify-trail.mjs -D published
             already=$(shasum -a 256 published/verify-trail.mjs | cut -d' ' -f1)
-            if [ "$already" = "$digest" ]; then
-              echo "$GITHUB_REF_NAME is already released and its attached file is the file at this tag. Nothing to do."
+            if [ "$already" = "$digest" ] && git diff --quiet "$latest" HEAD -- fixtures; then
+              echo "The latest release already attaches this verify-trail.mjs and these fixtures. Nothing to release." "$latest"
               exit 0
             fi
-            echo "$GITHUB_REF_NAME is already released, and the file attached to it is NOT the file at this tag."
-            echo "  attached to the release: $already"
-            echo "  at this tag:             $digest"
-            echo "Refusing to republish. A released digest describes a file somebody may already hold,"
-            echo "so it is never overwritten. Release the new file under a new version instead."
+          fi
+
+          next=$(node .github/next-version.mjs "$latest")
+          if gh release view "$next" >/dev/null 2>&1; then
+            echo "Refusing to republish. A released digest describes a file somebody may already hold," "$next"
+            echo "so it is never overwritten, and the release after the latest one already exists."
             exit 1
           fi
 
@@ -76,10 +78,11 @@ jobs:
             echo "Check your copy with \`shasum -a 256 verify-trail.mjs\`, or on Windows"
             echo "\`certutil -hashfile verify-trail.mjs SHA256\`. This digest is computed by the"
             echo "release job from the bytes it attaches, so it is not a value anybody typed."
+            echo "The verifier prints the same digest, of itself, on the first line of every run."
             echo
-            echo "\`fixtures.zip\` is the \`fixtures\` directory at this tag, one frozen export per format."
+            echo "\`fixtures.zip\` is the \`fixtures\` directory at this release, one frozen export per format."
             echo "Extract it beside \`verify-trail.mjs\` and run the verifier against each fixture before"
             echo "you trust it with your own record."
           } > notes.md
-          gh release create "$GITHUB_REF_NAME" verify-trail.mjs fixtures.zip LICENSE NOTICE \
-            --title "$GITHUB_REF_NAME" --notes-file notes.md
+          gh release create "$next" verify-trail.mjs fixtures.zip LICENSE NOTICE \
+            --target "$GITHUB_SHA" --title "$next" --notes-file notes.md
