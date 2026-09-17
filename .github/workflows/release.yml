@@ -26,11 +26,19 @@ jobs:
             exit 1
           fi
 
-      - name: every fixture verifies
+      - name: archive the fixtures directory as it stands at this tag
         run: |
           set -e
+          git archive --format=zip HEAD fixtures > fixtures.zip
+
+      - name: every fixture in the archive it attaches verifies
+        run: |
+          set -e
+          mkdir -p attached
+          unzip -q fixtures.zip -d attached
+          cd attached
           for file in fixtures/*.json; do
-            node verify-trail.mjs "$file"
+            node ../verify-trail.mjs "$file"
           done
 
       - name: publish the release, with the digest of the bytes it attaches
@@ -39,6 +47,7 @@ jobs:
         run: |
           set -e
           digest=$(shasum -a 256 verify-trail.mjs | cut -d' ' -f1)
+          fixtures_digest=$(shasum -a 256 fixtures.zip | cut -d' ' -f1)
 
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             mkdir -p published
@@ -57,15 +66,20 @@ jobs:
           fi
 
           {
-            echo "\`verify-trail.mjs\` for this release, and the SHA-256 of the exact file attached below."
+            echo "\`verify-trail.mjs\` for this release, and the SHA-256 of the exact files attached below."
             echo
             echo '```'
             echo "$digest  verify-trail.mjs"
+            echo "$fixtures_digest  fixtures.zip"
             echo '```'
             echo
             echo "Check your copy with \`shasum -a 256 verify-trail.mjs\`, or on Windows"
             echo "\`certutil -hashfile verify-trail.mjs SHA256\`. This digest is computed by the"
             echo "release job from the bytes it attaches, so it is not a value anybody typed."
+            echo
+            echo "\`fixtures.zip\` is the \`fixtures\` directory at this tag, one frozen export per format."
+            echo "Extract it beside \`verify-trail.mjs\` and run the verifier against each fixture before"
+            echo "you trust it with your own record."
           } > notes.md
-          gh release create "$GITHUB_REF_NAME" verify-trail.mjs LICENSE NOTICE \
+          gh release create "$GITHUB_REF_NAME" verify-trail.mjs fixtures.zip LICENSE NOTICE \
             --title "$GITHUB_REF_NAME" --notes-file notes.md

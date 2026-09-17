@@ -51,7 +51,15 @@ compare it against are frozen together.
 ## Checking the verifier before you trust it with your own record
 
 `fixtures/` holds exports whose contents are known, one per export format the
-verifier reads. Run it against each of them first, one file at a time, and each
+verifier reads. Every release attaches it as `fixtures.zip`, so download that
+beside `verify-trail.mjs` and extract it there, which gives you the same
+`fixtures/` directory this repository holds at that tag:
+
+```
+node verify-trail.mjs fixtures/dc-audit-export-v3.json
+```
+
+Run it against each of them first, one file at a time, and each
 should report every chain verifying and exit `0`. Then alter one character
 inside any row in a copy of one, run it again, and it should report that
 document broken at the sequence number you touched. A checker that cannot be
